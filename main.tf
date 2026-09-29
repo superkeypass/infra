@@ -16,14 +16,9 @@ data "cloudflare_zone" "com" {
   name = "superkeypass.com"
 }
 
-data "cloudflare_zone" "org" {
-  name = "superkeypass.org"
-}
-
 locals {
   zones = {
     com = data.cloudflare_zone.com.id
-    org = data.cloudflare_zone.org.id
   }
 }
 
@@ -85,26 +80,10 @@ resource "cloudflare_record" "apex" {
   proxied = true
 }
 
-# www and the whole .org zone only need to exist and be proxied so the
+# www only needs to exist and be proxied so the
 # redirect rules below can catch the request. 192.0.2.1 is TEST-NET-1 (never routed).
 resource "cloudflare_record" "www" {
   zone_id = local.zones.com
-  name    = "www"
-  type    = "A"
-  content = "192.0.2.1"
-  proxied = true
-}
-
-resource "cloudflare_record" "org_apex" {
-  zone_id = local.zones.org
-  name    = "@"
-  type    = "A"
-  content = "192.0.2.1"
-  proxied = true
-}
-
-resource "cloudflare_record" "org_www" {
-  zone_id = local.zones.org
   name    = "www"
   type    = "A"
   content = "192.0.2.1"
@@ -121,28 +100,6 @@ resource "cloudflare_ruleset" "com_redirects" {
   rules {
     description = "www -> apex"
     expression  = "(http.host eq \"www.superkeypass.com\")"
-    action      = "redirect"
-    action_parameters {
-      from_value {
-        status_code           = 301
-        preserve_query_string = true
-        target_url {
-          expression = "concat(\"https://superkeypass.com\", http.request.uri.path)"
-        }
-      }
-    }
-  }
-}
-
-resource "cloudflare_ruleset" "org_redirects" {
-  zone_id = local.zones.org
-  name    = "redirects"
-  kind    = "zone"
-  phase   = "http_request_dynamic_redirect"
-
-  rules {
-    description = ".org -> .com"
-    expression  = "true"
     action      = "redirect"
     action_parameters {
       from_value {
@@ -190,19 +147,4 @@ resource "cloudflare_record" "dmarc" {
   name    = "_dmarc"
   type    = "TXT"
   content = "v=DMARC1; p=none; rua=mailto:hello@superkeypass.com"
-}
-
-# .org sends no mail: lock it down so nobody can spoof it.
-resource "cloudflare_record" "org_spf" {
-  zone_id = local.zones.org
-  name    = "@"
-  type    = "TXT"
-  content = "v=spf1 -all"
-}
-
-resource "cloudflare_record" "org_dmarc" {
-  zone_id = local.zones.org
-  name    = "_dmarc"
-  type    = "TXT"
-  content = "v=DMARC1; p=reject;"
 }
