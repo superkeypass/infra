@@ -43,22 +43,13 @@ resource "cloudflare_zone_settings_override" "this" {
   }
 }
 
-# ── Landing page: Cloudflare Pages from superkeypass/website ─────────────────
+# ── Landing page: Cloudflare Pages, direct upload of superkeypass/website ────
+# Deployed with `wrangler pages deploy` (no GitHub app needed).
 resource "cloudflare_pages_project" "website" {
   account_id        = var.account_id
   name              = "superkeypass-website"
   production_branch = "main"
 
-  source {
-    type = "github"
-    config {
-      owner                         = "superkeypass"
-      repo_name                     = "website"
-      production_branch             = "main"
-      deployments_enabled           = true
-      production_deployment_enabled = true
-    }
-  }
 
   build_config {
     build_command   = ""
